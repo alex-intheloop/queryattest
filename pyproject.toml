@@ -27,9 +27,9 @@ dependencies = [
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.9,<3",
   "PyYAML>=6.0.2,<7",
-  "cryptography>=48.0.1,<49",
+  "cryptography>=48.0.1,<50",
   "typer>=0.16,<1",
-  "rich>=14,<15",
+  "rich>=14,<16",
 ]
 
 [project.optional-dependencies]
