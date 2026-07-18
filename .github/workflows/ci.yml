@@ -1,0 +1,131 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen pytest -m "not integration"
+
+  static-analysis:
+    name: static analysis and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: env -u UV_INDEX_URL uv lock --check --offline --default-index https://pypi.org/simple
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen mypy src
+      - run: uv run --frozen bandit -q -r src/queryattest
+      - run: >-
+          uv run --frozen pytest -m "not integration"
+          --cov=queryattest
+          --cov-branch
+          --cov-report=term-missing:skip-covered
+          --cov-report=xml
+      - name: Audit Python dependencies
+        run: uv run --frozen pip-audit
+
+  postgres-integration:
+    name: PostgreSQL 17 integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: queryattest
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queryattest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Initialize least-privilege fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d queryattest -v ON_ERROR_STOP=1 -f demo/init.sql
+      - name: Run integration and RLS tests
+        env:
+          TEST_DATABASE_URL: postgresql://queryattest_reader:queryattest_reader@127.0.0.1:5432/queryattest
+        run: uv run --frozen pytest -m integration
+
+  package:
+    name: build and wheel smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.10.0"
+      - run: uv build
+      - run: uv venv /tmp/queryattest-wheel-smoke
+      - run: uv pip install --python /tmp/queryattest-wheel-smoke/bin/python dist/*.whl
+      - run: /tmp/queryattest-wheel-smoke/bin/python -c "import queryattest; print(queryattest.__version__)"
+      - run: /tmp/queryattest-wheel-smoke/bin/queryattest --help
+
+  container:
+    name: container build and non-root smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Build image
+        run: docker build --tag queryattest:test .
+      - name: Verify non-root runtime
+        run: test "$(docker image inspect --format='{{.Config.User}}' queryattest:test)" = "10001:10001"
+      - name: Smoke-test installed CLI
+        run: docker run --rm --entrypoint queryattest queryattest:test --help

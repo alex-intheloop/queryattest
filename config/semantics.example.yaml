@@ -1,0 +1,101 @@
+version: "2026-07-16.1"
+
+data_products:
+  orders:
+    table: analytics.orders
+    alias: o
+    tenant_column: tenant_id
+    description: Completed and pending commerce orders, isolated by tenant through PostgreSQL RLS.
+    fields:
+      order_id:
+        expression: "{alias}.order_id"
+        data_type: integer
+        columns: [order_id]
+        groupable: false
+        filterable: false
+        description: Stable order identifier used by count metrics.
+      net_amount:
+        expression: "{alias}.net_amount"
+        data_type: number
+        columns: [net_amount]
+        groupable: false
+        filterable: false
+        description: Net monetary amount after discounts and adjustments.
+      order_month:
+        expression: "date_trunc('month', {alias}.completed_at)"
+        data_type: timestamp
+        columns: [completed_at]
+        groupable: true
+        filterable: false
+        description: Calendar month of order completion.
+      completed_at:
+        expression: "{alias}.completed_at"
+        data_type: timestamp
+        columns: [completed_at]
+        groupable: false
+        filterable: true
+        description: Order completion timestamp.
+      channel:
+        expression: "{alias}.channel"
+        data_type: string
+        columns: [channel]
+        groupable: true
+        filterable: true
+        description: Acquisition channel.
+      country:
+        expression: "{alias}.country"
+        data_type: string
+        columns: [country]
+        groupable: true
+        filterable: true
+        description: ISO-like market code.
+      status:
+        expression: "{alias}.status"
+        data_type: string
+        columns: [status]
+        groupable: true
+        filterable: true
+        description: Order lifecycle status.
+      customer_email:
+        expression: "{alias}.customer_email"
+        data_type: string
+        columns: [customer_email]
+        groupable: false
+        filterable: true
+        description: Sensitive customer identifier; denied by the sample policy.
+
+metrics:
+  net_revenue:
+    version: "3"
+    data_product: orders
+    expression: "COALESCE(SUM({alias}.net_amount), 0)"
+    output_name: net_revenue
+    columns: [net_amount]
+    base_filters:
+      - "{alias}.status = 'completed'"
+    base_filter_columns: [status]
+    description: Sum of net order amount for completed orders.
+    unit: VND
+    checks:
+      - type: non_null
+        field: net_revenue
+      - type: min
+        field: net_revenue
+        value: 0
+
+  order_count:
+    version: "1"
+    data_product: orders
+    expression: "COUNT({alias}.order_id)"
+    output_name: order_count
+    columns: [order_id]
+    base_filters: []
+    base_filter_columns: []
+    description: Number of orders in the requested slice.
+    unit: orders
+    checks:
+      - type: non_null
+        field: order_count
+      - type: min
+        field: order_count
+        value: 0

@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible correctness, reliability, or developer-experience defect.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not disclose suspected authorization bypasses, ticket forgery/replay, tenant isolation failures, secrets, or exploitable audit weaknesses here. Use the private process in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.1 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Semantic compilation
+        - Policy and SQL validation
+        - Tickets and encrypted state
+        - PostgreSQL execution or RLS
+        - Result verification
+        - Audit evidence
+        - MCP transport or CLI
+        - Packaging, CI, or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include sanitized configuration and exact commands. Never include real credentials or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Python, PostgreSQL, transport, installation method
+    validations:
+      required: true

@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "queryattest"
+version = "0.1.1"
+description = "Evidence-backed database execution for AI agents over MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "QueryAttest contributors" }]
+keywords = ["mcp", "postgresql", "ai-agent", "attestation", "data-governance", "query-receipt", "sql-security"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "mcp>=1.28.1,<2",
+  "asyncpg>=0.31,<1",
+  "sqlglot>=30.12,<31",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.9,<3",
+  "PyYAML>=6.0.2,<7",
+  "cryptography>=48.0.1,<49",
+  "typer>=0.16,<1",
+  "rich>=14,<15",
+]
+
+[project.optional-dependencies]
+otel = [
+  "opentelemetry-api>=1.35,<2",
+  "opentelemetry-sdk>=1.35,<2",
+]
+dev = [
+  "pytest>=8.4,<10",
+  "pytest-asyncio>=1.0,<2",
+  "pytest-cov>=7,<8",
+  "ruff>=0.12,<1",
+  "mypy>=1.16,<2",
+  "bandit>=1.9,<2",
+  "pip-audit>=2.10,<3",
+]
+
+[project.scripts]
+queryattest = "queryattest.cli:app"
+queryattest-server = "queryattest.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/queryattest"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["integration: requires a running PostgreSQL instance"]
+filterwarnings = ["error::ResourceWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "S"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["S101", "S104", "S105", "S106", "S608"]
+"tests/**/*.py" = ["S101", "S104", "S105", "S106", "S608"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "yaml", "opentelemetry", "opentelemetry.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+branch = true
+source = ["queryattest"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true

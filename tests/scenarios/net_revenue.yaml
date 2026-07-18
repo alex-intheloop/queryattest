@@ -1,0 +1,25 @@
+name: net revenue for tenant-a in June 2026
+intent:
+  question: "Doanh thu thuần tháng 6/2026 là bao nhiêu?"
+  metric: net_revenue
+  dimensions: []
+  filters:
+    - field: completed_at
+      op: gte
+      value: "2026-06-01T00:00:00Z"
+    - field: completed_at
+      op: lt
+      value: "2026-07-01T00:00:00Z"
+  order_by: []
+  limit: 100
+expected:
+  metric: net_revenue
+  allowed_tables:
+    - analytics.orders
+  forbidden_columns:
+    - analytics.orders.customer_email
+  max_total_cost: 50000
+  receipt_status: verified
+  first_row:
+    net_revenue: 2000000
+  tolerance_percent: 0.01

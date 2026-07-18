@@ -1,0 +1,77 @@
+version: "2026-07-16.1"
+
+limits:
+  max_rows: 500
+  max_estimated_rows: 250000
+  max_total_cost: 50000
+  max_bind_parameters: 500
+  statement_timeout_ms: 5000
+  ticket_ttl_seconds: 120
+  plan_ttl_seconds: 300
+
+sql_safety:
+  deny_select_star: true
+  require_schema_qualified_tables: true
+  forbidden_schemas:
+    - pg_catalog
+    - information_schema
+  forbidden_functions:
+    - pg_sleep
+    - dblink
+    - dblink_connect
+    - dblink_exec
+    - lo_export
+    - lo_import
+    - pg_read_file
+    - pg_read_binary_file
+    - pg_ls_dir
+    - query_to_xml
+    - database_to_xml
+    - set_config
+    - nextval
+    - setval
+    - pg_notify
+    - pg_advisory_lock
+    - pg_advisory_lock_shared
+    - pg_try_advisory_lock
+    - pg_try_advisory_lock_shared
+    - pg_advisory_unlock
+    - pg_advisory_unlock_shared
+    - pg_advisory_unlock_all
+    - pg_cancel_backend
+    - pg_terminate_backend
+    - pg_reload_conf
+    - pg_rotate_logfile
+    - pg_create_restore_point
+    - pg_switch_wal
+    - pg_wal_replay_pause
+    - pg_wal_replay_resume
+    - pg_promote
+
+roles:
+  finance_analyst:
+    allow_metrics:
+      - net_revenue
+      - order_count
+    allow_tables:
+      - analytics.orders
+    allow_columns:
+      - analytics.orders.order_id
+      - analytics.orders.tenant_id
+      - analytics.orders.net_amount
+      - analytics.orders.completed_at
+      - analytics.orders.status
+      - analytics.orders.channel
+      - analytics.orders.country
+    deny_columns:
+      - analytics.orders.customer_email
+
+  auditor:
+    allow_metrics:
+      - "*"
+    allow_tables:
+      - analytics.*
+    allow_columns:
+      - analytics.*
+    deny_columns:
+      - "*.customer_email"

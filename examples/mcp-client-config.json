@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "queryattest": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/queryattest",
+        "run",
+        "queryattest-server"
+      ],
+      "env": {
+        "QUERYATTEST_DATABASE_URL": "postgresql://queryattest_reader:queryattest_reader@localhost:5432/queryattest",
+        "QUERYATTEST_POLICY_PATH": "/absolute/path/to/queryattest/config/policy.yaml",
+        "QUERYATTEST_SEMANTICS_PATH": "/absolute/path/to/queryattest/config/semantics.yaml",
+        "QUERYATTEST_STATE_PATH": "/absolute/path/to/queryattest/.queryattest/state.db",
+        "QUERYATTEST_TICKET_SECRET": "replace-with-a-random-secret-of-at-least-32-bytes",
+        "QUERYATTEST_USER_ID": "alex",
+        "QUERYATTEST_ROLES": "finance_analyst",
+        "QUERYATTEST_TENANT_ID": "tenant-a"
+      }
+    }
+  }
+}

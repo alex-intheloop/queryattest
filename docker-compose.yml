@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: queryattest
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ./demo/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d queryattest"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mcp:
+    profiles: ["server"]
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      QUERYATTEST_DATABASE_URL: postgresql://queryattest_reader:queryattest_reader@postgres:5432/queryattest
+      QUERYATTEST_POLICY_PATH: /app/config/policy.yaml
+      QUERYATTEST_SEMANTICS_PATH: /app/config/semantics.yaml
+      QUERYATTEST_STATE_PATH: /app/state/state.db
+      QUERYATTEST_TICKET_SECRET: ${QUERYATTEST_TICKET_SECRET:-local-demo-secret-change-me-0123456789abcdef}
+      QUERYATTEST_USER_ID: demo-user
+      QUERYATTEST_ROLES: finance_analyst
+      QUERYATTEST_TENANT_ID: tenant-a
+      QUERYATTEST_TRANSPORT: streamable-http
+      QUERYATTEST_HOST: 0.0.0.0
+      QUERYATTEST_PORT: 8000
+      # Explicitly accepted only because the demo binds the published port to
+      # localhost and uses a single fixed identity. Do not copy to production.
+      QUERYATTEST_ALLOW_INSECURE_REMOTE_HTTP: "true"
+    ports:
+      - "127.0.0.1:8000:8000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - queryattest_state:/app/state
+
+volumes:
+  queryattest_state:
